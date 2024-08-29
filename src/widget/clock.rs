@@ -139,5 +139,5 @@ impl Drawable for Clock {
 
 fn get_time() -> String {
     let dt = chrono::Local::now();
-    format!("{}:{}:{}", dt.hour(), dt.minute(), dt.second())
+    format!("{:0<2}:{:0<2}:{:0<2}", dt.hour(), dt.minute(), dt.second())
 }
