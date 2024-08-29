@@ -12,12 +12,10 @@ use cosmic_text::Shaping;
 use cosmic_text::SwashCache;
 use spin::RwLock;
 use tiny_skia::Paint;
-use tiny_skia::PixmapMut;
+use tiny_skia::Pixmap;
 use tiny_skia::Rect;
 use tiny_skia::Transform;
 use winit::event_loop::EventLoop;
-use winit::raw_window_handle::DisplayHandle;
-use winit::window::Window;
 
 use crate::render::Drawable;
 
@@ -80,11 +78,7 @@ impl Clock {
 }
 
 impl Drawable for Clock {
-    fn draw(
-        &mut self,
-        window: &Window,
-        buffer: &mut softbuffer::Buffer<DisplayHandle<'static>, Arc<Window>>,
-    ) -> Result<(), Box<dyn Error>> {
+    fn draw(&mut self, buffer: &mut Pixmap) -> Result<(), Box<dyn Error>> {
         self.buffer.set_text(
             &mut self.font_system,
             &self.current_time.read(),
@@ -92,22 +86,12 @@ impl Drawable for Clock {
             Shaping::Advanced,
         );
 
-        let buffer_u8 = unsafe {
-            std::slice::from_raw_parts_mut(buffer.as_mut_ptr() as *mut u8, buffer.len() * 4)
-        };
-
-        let mut pixmap = PixmapMut::from_bytes(
-            buffer_u8,
-            window.inner_size().width,
-            window.inner_size().height,
-        )
-        .unwrap();
-
         let mut paint = Paint {
             anti_alias: false,
             ..Default::default()
         };
 
+        // TODO make this padding configurable
         let padding_x = 50;
         let padding_y = 100;
 
@@ -118,7 +102,7 @@ impl Drawable for Clock {
             Color::rgb(255, 255, 255),
             |x, y, w, h, color| {
                 paint.set_color_rgba8(color.b(), color.g(), color.r(), color.a());
-                pixmap.fill_rect(
+                buffer.fill_rect(
                     Rect::from_xywh(
                         (x + padding_x) as f32,
                         (y + padding_y) as f32,

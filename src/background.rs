@@ -1,12 +1,11 @@
 use std::error::Error;
-use std::sync::Arc;
 
 use image::DynamicImage;
 use image::GenericImageView;
 use image::ImageReader;
+use tiny_skia::Color;
+use tiny_skia::Pixmap;
 use winit::dpi::PhysicalSize;
-use winit::raw_window_handle::DisplayHandle;
-use winit::window::Window;
 
 use crate::render::Drawable;
 
@@ -16,7 +15,7 @@ pub enum Background {
         original: Option<DynamicImage>,
     },
     #[allow(dead_code)]
-    SolidColor((u8, u8, u8)),
+    SolidColor(Color),
 }
 
 impl Background {
@@ -53,27 +52,32 @@ impl Background {
     }
 }
 impl Drawable for Background {
-    fn draw(
-        &mut self,
-        _window: &Window,
-        buffer: &mut softbuffer::Buffer<DisplayHandle<'static>, Arc<Window>>,
-    ) -> Result<(), Box<dyn Error>> {
+    fn draw(&mut self, buffer: &mut Pixmap) -> Result<(), Box<dyn Error>> {
         match self {
             Background::Image { image, original: _ } => {
-                let width = image.width() as usize;
+                // TODO: instead of keeping both original and image instances, keep only the
+                // original one and save the rgba_data (resized_image_buffer), so we don't need to
+                // do this processing every time.
+                let inner_buf = buffer.data_mut();
 
-                for (x, y, pixel) in image.pixels() {
-                    let red = pixel.0[0] as u32;
-                    let green = pixel.0[1] as u32;
-                    let blue = pixel.0[2] as u32;
+                // The image contains WxH pixels, where each pixel is 32-bit long
+                let mut rgba_data =
+                    Vec::with_capacity((image.width() * image.height() * 4) as usize);
 
-                    let color = blue | (green << 8) | (red << 16);
+                for (_, _, pixel) in image.pixels() {
+                    let [red, green, blue, alpha] = pixel.0;
 
-                    buffer[y as usize * width + x as usize] = color;
+                    rgba_data.push(red);
+                    rgba_data.push(green);
+                    rgba_data.push(blue);
+                    rgba_data.push(alpha);
                 }
+
+                // TODO should I premultiply alpha?
+                inner_buf.copy_from_slice(&rgba_data);
             }
-            Background::SolidColor((r, g, b)) => {
-                buffer.fill(u32::from_be_bytes([0x00, *r, *g, *b]));
+            Background::SolidColor(color) => {
+                buffer.fill(*color);
             }
         }
 

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
 
-use softbuffer::Context;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
@@ -11,8 +10,6 @@ use winit::keyboard::Key;
 use winit::keyboard::ModifiersState;
 use winit::platform::startup_notify::EventLoopExtStartupNotify;
 use winit::platform::startup_notify::WindowAttributesExtStartupNotify;
-use winit::raw_window_handle::DisplayHandle;
-use winit::raw_window_handle::HasDisplayHandle;
 use winit::window::Fullscreen;
 use winit::window::WindowAttributes;
 use winit::window::WindowId;
@@ -25,28 +22,14 @@ use crate::window::WindowState;
 pub struct Application {
     pub(crate) windows: HashMap<WindowId, WindowState>,
 
-    // Drawing context.
-    pub(crate) context: Option<Context<DisplayHandle<'static>>>,
-
     pub(crate) background: Background,
     clock_widget: Clock,
 }
 
 impl Application {
     pub fn new(event_loop: &EventLoop<()>) -> Self {
-        // SAFETY: the context is dropped right before the event loop is stopped, thus making it
-        // safe.
-        let context = Some(
-            Context::new(unsafe {
-                std::mem::transmute::<DisplayHandle<'_>, DisplayHandle<'static>>(
-                    event_loop.display_handle().unwrap(),
-                )
-            })
-            .unwrap(),
-        );
-
         // TODO read it from configuration
-        //let background = Background::SolidColor((0, 0, 0));
+        //let background = Background::SolidColor(Color::from_rgba8(55, 255, 255, 0xFF));
         let background = Background::new_image(
             "/home/koritar/.config/wallpapers/yosemite-valley.jpg".to_string(),
         )
@@ -56,7 +39,6 @@ impl Application {
 
         Self {
             windows: Default::default(),
-            context,
             background,
             clock_widget,
         }
@@ -73,7 +55,7 @@ impl Application {
         window.set_fullscreen(Some(Fullscreen::Borderless(window.primary_monitor())));
         //window.set_cursor_visible(false);
 
-        let window_state = WindowState::new(self, window)?;
+        let window_state = WindowState::new(window)?;
         let window_id = window_state.window.id();
 
         self.windows.insert(window_id, window_state);
@@ -151,11 +133,6 @@ impl ApplicationHandler for Application {
         if self.windows.is_empty() {
             event_loop.exit();
         }
-    }
-
-    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
-        // We must drop the context here.
-        self.context = None;
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {

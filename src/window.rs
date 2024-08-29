@@ -2,19 +2,19 @@ use std::error::Error;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
-use softbuffer::Surface;
+use pixels::Pixels;
+use pixels::SurfaceTexture;
 
+use tiny_skia::Pixmap;
 use winit::dpi::PhysicalSize;
 use winit::keyboard::ModifiersState;
-use winit::raw_window_handle::DisplayHandle;
 use winit::window::Window;
 
-use crate::app::Application;
 use crate::render::Drawable;
 
 pub struct WindowState {
-    // Render Surface.
-    surface: Surface<DisplayHandle<'static>, Arc<Window>>,
+    frame_buffer: Pixels,
+    drawing_buffer: Pixmap,
 
     /// winit Window.
     pub(crate) window: Arc<Window>,
@@ -24,15 +24,25 @@ pub struct WindowState {
 }
 
 impl WindowState {
-    pub fn new(app: &Application, window: Window) -> Result<Self, Box<dyn Error>> {
+    pub fn new(window: Window) -> Result<Self, Box<dyn Error>> {
         let window = Arc::new(window);
-        let surface = Surface::new(app.context.as_ref().unwrap(), Arc::clone(&window))?;
 
-        //let size = window.inner_size();
-        //background.resize(size);
+        let surface_texture = SurfaceTexture::new(
+            window.inner_size().width,
+            window.inner_size().height,
+            &window,
+        );
+        let frame_buffer = Pixels::new(
+            window.inner_size().width,
+            window.inner_size().height,
+            surface_texture,
+        )?;
+        let drawing_buffer = Pixmap::new(window.inner_size().width, window.inner_size().height)
+            .expect("creating drawing buffer");
 
         let state = WindowState {
-            surface,
+            frame_buffer,
+            drawing_buffer,
             window,
             modifiers: Default::default(),
         };
@@ -47,22 +57,28 @@ impl WindowState {
             _ => return,
         };
 
-        self.surface
-            .resize(width, height)
-            .expect("failed to resize surface");
+        self.frame_buffer
+            .resize_surface(width.into(), height.into())
+            .unwrap();
+        self.frame_buffer
+            .resize_buffer(width.into(), height.into())
+            .unwrap();
+        self.drawing_buffer = Pixmap::new(width.into(), height.into()).unwrap();
 
         self.window.request_redraw();
     }
 
     pub fn draw(&mut self, drawables: Vec<&mut dyn Drawable>) -> Result<(), Box<dyn Error>> {
-        let mut buffer = self.surface.buffer_mut()?;
-
         for drawable in drawables {
-            drawable.draw(&self.window, &mut buffer)?;
+            drawable.draw(&mut self.drawing_buffer)?;
         }
 
+        self.frame_buffer
+            .frame_mut()
+            .copy_from_slice(self.drawing_buffer.data());
+
         self.window.pre_present_notify();
-        buffer.present()?;
+        self.frame_buffer.render()?;
         Ok(())
     }
 }
