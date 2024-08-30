@@ -16,7 +16,9 @@ use tiny_skia::Pixmap;
 use tiny_skia::Rect;
 use tiny_skia::Transform;
 use winit::event_loop::EventLoop;
+use winit::window::Window;
 
+use crate::config::Position;
 use crate::render::Drawable;
 
 pub struct Clock {
@@ -25,44 +27,43 @@ pub struct Clock {
     swash_cache: SwashCache,
 
     current_time: Arc<RwLock<String>>,
+
+    position: Position,
 }
 
 impl Clock {
-    pub fn new(event_loop: &EventLoop<()>) -> Result<Self, Box<dyn Error>> {
+    pub fn new(
+        event_loop: &EventLoop<()>,
+        position: Position,
+        font_size: f32,
+        line_height: f32,
+        show_seconds: bool,
+    ) -> Result<Self, Box<dyn Error>> {
         // cosmic-text says we should use one per application, but who cares? I don't want to use
         // mutexes so here we go.
         let mut font_system = FontSystem::new();
         let swash_cache = SwashCache::new();
 
         // TODO how this line height works???
-        let mut buffer = Buffer::new(&mut font_system, Metrics::new(150.0, 1.0));
+        let mut buffer = Buffer::new(&mut font_system, Metrics::new(font_size, line_height));
         buffer.set_text(
             &mut font_system,
-            &get_time(),
+            &get_time(show_seconds),
             Attrs::new().family(cosmic_text::Family::Monospace),
             Shaping::Advanced,
         );
 
-        let current_time = Arc::new(RwLock::new(get_time()));
+        let current_time = Arc::new(RwLock::new(get_time(show_seconds)));
 
         {
             let event_loop_proxy = event_loop.create_proxy();
             let current_time = current_time.clone();
-            //let buffer = buffer.clone();
+
             std::thread::spawn(move || loop {
                 std::thread::sleep(Duration::from_secs(1));
 
                 let mut ctime = current_time.write();
-                *ctime = get_time();
-
-                //let mut font_system = font_system.lock().unwrap();
-                //let mut buffer = buffer.lock().unwrap();
-                //buffer.set_text(
-                //    &mut font_system,
-                //    &get_time(),
-                //    Attrs::new().family(cosmic_text::Family::Monospace),
-                //    Shaping::Advanced,
-                //);
+                *ctime = get_time(show_seconds);
 
                 event_loop_proxy.send_event(()).unwrap();
             });
@@ -73,12 +74,13 @@ impl Clock {
             font_system,
             swash_cache,
             current_time,
+            position,
         })
     }
 }
 
 impl Drawable for Clock {
-    fn draw(&mut self, buffer: &mut Pixmap) -> Result<(), Box<dyn Error>> {
+    fn draw(&mut self, window: &Window, buffer: &mut Pixmap) -> Result<(), Box<dyn Error>> {
         self.buffer.set_text(
             &mut self.font_system,
             &self.current_time.read(),
@@ -92,8 +94,8 @@ impl Drawable for Clock {
         };
 
         // TODO make this padding configurable
-        let padding_x = 50;
-        let padding_y = 100;
+        //let padding_x = 50;
+        //let padding_y = 100;
 
         self.buffer.draw(
             &mut self.font_system,
@@ -101,6 +103,16 @@ impl Drawable for Clock {
             // TODO: make this color configurable
             Color::rgb(255, 255, 255),
             |x, y, w, h, color| {
+                let (padding_x, padding_y) = match self.position {
+                    Position::Center => {
+                        let centered_x = (window.inner_size().width / 2) - (w / 2);
+                        let centered_y = (window.inner_size().height / 2) - (h / 2);
+
+                        (centered_x as i32, centered_y as i32)
+                    }
+                    Position::XY { x, y } => (x as i32, y as i32),
+                };
+
                 paint.set_color_rgba8(color.b(), color.g(), color.r(), color.a());
                 buffer.fill_rect(
                     Rect::from_xywh(
@@ -121,7 +133,11 @@ impl Drawable for Clock {
     }
 }
 
-fn get_time() -> String {
+fn get_time(show_seconds: bool) -> String {
     let dt = chrono::Local::now();
-    format!("{:0<2}:{:0<2}:{:0<2}", dt.hour(), dt.minute(), dt.second())
+
+    match show_seconds {
+        true => format!("{:0<2}:{:0<2}:{:0<2}", dt.hour(), dt.minute(), dt.second()),
+        false => format!("{:0<2}:{:0<2}", dt.hour(), dt.minute()),
+    }
 }

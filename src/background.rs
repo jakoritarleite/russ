@@ -7,6 +7,7 @@ use thiserror::Error;
 use tiny_skia::Color;
 use tiny_skia::Pixmap;
 use winit::dpi::PhysicalSize;
+use winit::window::Window;
 
 use crate::config;
 use crate::render::Drawable;
@@ -44,7 +45,11 @@ impl Background {
 }
 
 impl Drawable for Background {
-    fn draw(&mut self, buffer: &mut Pixmap) -> Result<(), Box<dyn std::error::Error>> {
+    fn draw(
+        &mut self,
+        _window: &Window,
+        buffer: &mut Pixmap,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         match self {
             Background::Image { image, original: _ } => {
                 // TODO: instead of keeping both original and image instances, keep only the

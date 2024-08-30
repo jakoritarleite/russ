@@ -38,8 +38,20 @@ impl Application {
             .widgets
             .iter()
             .map(|widget| match widget {
-                crate::config::Widget::Clock { position: _ } => {
-                    let clock = Clock::new(event_loop).unwrap();
+                crate::config::Widget::Clock {
+                    position,
+                    font_size,
+                    line_height,
+                    show_seconds,
+                } => {
+                    let clock = Clock::new(
+                        event_loop,
+                        *position,
+                        *font_size,
+                        *line_height,
+                        *show_seconds,
+                    )
+                    .unwrap();
                     let clock: Box<dyn Drawable> = Box::new(clock);
                     clock
                 }

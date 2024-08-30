@@ -70,7 +70,7 @@ impl WindowState {
 
     pub fn draw(&mut self, drawables: Vec<&mut dyn Drawable>) -> Result<(), Box<dyn Error>> {
         for drawable in drawables {
-            drawable.draw(&mut self.drawing_buffer)?;
+            drawable.draw(&self.window, &mut self.drawing_buffer)?;
         }
 
         self.frame_buffer
