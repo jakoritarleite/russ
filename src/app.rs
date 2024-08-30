@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -15,32 +16,40 @@ use winit::window::WindowAttributes;
 use winit::window::WindowId;
 
 use crate::background::Background;
+use crate::config::Configuration;
 use crate::render::Drawable;
 use crate::widget::clock::Clock;
 use crate::window::WindowState;
 
 pub struct Application {
-    pub(crate) windows: HashMap<WindowId, WindowState>,
+    windows: HashMap<WindowId, WindowState>,
 
-    pub(crate) background: Background,
-    clock_widget: Clock,
+    background: Background,
+    widgets: Vec<Box<dyn Drawable>>,
 }
 
 impl Application {
     pub fn new(event_loop: &EventLoop<()>) -> Self {
-        // TODO read it from configuration
-        //let background = Background::SolidColor(Color::from_rgba8(55, 255, 255, 0xFF));
-        let background = Background::new_image(
-            "/home/koritar/.config/wallpapers/yosemite-valley.jpg".to_string(),
-        )
-        .unwrap();
+        let config = Configuration::new().unwrap();
 
-        let clock_widget = Clock::new(event_loop).unwrap();
+        let background = (&config.background).try_into().unwrap();
+
+        let widgets: Vec<Box<dyn Drawable>> = config
+            .widgets
+            .iter()
+            .map(|widget| match widget {
+                crate::config::Widget::Clock { position: _ } => {
+                    let clock = Clock::new(event_loop).unwrap();
+                    let clock: Box<dyn Drawable> = Box::new(clock);
+                    clock
+                }
+            })
+            .collect();
 
         Self {
             windows: Default::default(),
             background,
-            clock_widget,
+            widgets,
         }
     }
 
@@ -100,8 +109,13 @@ impl ApplicationHandler for Application {
 
             WindowEvent::RedrawRequested => {
                 let background: &mut dyn Drawable = &mut self.background;
-                let clock_widget: &mut dyn Drawable = &mut self.clock_widget;
-                let drawables = vec![background, clock_widget];
+
+                let drawables = self.widgets.iter_mut().map(|widget| {
+                    let widget: &mut dyn Drawable = widget.borrow_mut();
+                    widget
+                });
+
+                let drawables = [background].into_iter().chain(drawables).collect();
 
                 if let Err(err) = window.draw(drawables) {
                     println!("Error drawing window: {err}");

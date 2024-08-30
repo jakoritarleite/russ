@@ -1,12 +1,14 @@
-use std::error::Error;
+use std::io;
 
 use image::DynamicImage;
 use image::GenericImageView;
 use image::ImageReader;
+use thiserror::Error;
 use tiny_skia::Color;
 use tiny_skia::Pixmap;
 use winit::dpi::PhysicalSize;
 
+use crate::config;
 use crate::render::Drawable;
 
 pub enum Background {
@@ -14,21 +16,10 @@ pub enum Background {
         image: DynamicImage,
         original: Option<DynamicImage>,
     },
-    #[allow(dead_code)]
-    SolidColor(Color),
+    Color(Color),
 }
 
 impl Background {
-    pub fn new_image(path: impl Into<String>) -> Result<Self, Box<dyn Error>> {
-        let path = path.into();
-        let image = ImageReader::open(&path)?.decode()?;
-
-        Ok(Self::Image {
-            image,
-            original: None,
-        })
-    }
-
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
         // TODO refactor this piece of shit
         if let Self::Image { image, original } = self {
@@ -51,8 +42,9 @@ impl Background {
         }
     }
 }
+
 impl Drawable for Background {
-    fn draw(&mut self, buffer: &mut Pixmap) -> Result<(), Box<dyn Error>> {
+    fn draw(&mut self, buffer: &mut Pixmap) -> Result<(), Box<dyn std::error::Error>> {
         match self {
             Background::Image { image, original: _ } => {
                 // TODO: instead of keeping both original and image instances, keep only the
@@ -76,11 +68,40 @@ impl Drawable for Background {
                 // TODO should I premultiply alpha?
                 inner_buf.copy_from_slice(&rgba_data);
             }
-            Background::SolidColor(color) => {
+            Background::Color(color) => {
                 buffer.fill(*color);
             }
         }
 
         Ok(())
     }
+}
+
+impl TryFrom<&config::Background> for Background {
+    type Error = BackgroundConversionError;
+
+    fn try_from(value: &config::Background) -> Result<Self, Self::Error> {
+        match value {
+            config::Background::Image(path) => {
+                let image = ImageReader::open(path)?.decode()?;
+
+                Ok(Self::Image {
+                    image,
+                    original: None,
+                })
+            }
+            config::Background::Color((r, g, b)) => {
+                Ok(Self::Color(Color::from_rgba8(*r, *g, *b, 0xFF)))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum BackgroundConversionError {
+    #[error("could not open image due to: {0}")]
+    Io(#[from] io::Error),
+
+    #[error("there was an error processing the image: {0}")]
+    Image(#[from] image::error::ImageError),
 }
