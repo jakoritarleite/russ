@@ -62,9 +62,7 @@ impl Clock {
             std::thread::spawn(move || loop {
                 std::thread::sleep(Duration::from_secs(1));
 
-                let mut ctime = current_time.write();
-                *ctime = get_time(show_seconds);
-
+                *current_time.write() = get_time(show_seconds);
                 event_loop_proxy.send_event(()).unwrap();
             });
         }
@@ -93,9 +91,18 @@ impl Drawable for Clock {
             ..Default::default()
         };
 
-        // TODO make this padding configurable
-        //let padding_x = 50;
-        //let padding_y = 100;
+        let (width, height) = match self.position {
+            Position::Center => self
+                .buffer
+                .layout_runs()
+                .fold((0.0, 0.0), |(width, height), run| {
+                    (run.line_w.max(width), height + 1.0)
+                }),
+
+            Position::XY { .. } => (0.0, 0.0),
+        };
+
+        let height = height * self.buffer.metrics().line_height;
 
         self.buffer.draw(
             &mut self.font_system,
@@ -105,8 +112,8 @@ impl Drawable for Clock {
             |x, y, w, h, color| {
                 let (padding_x, padding_y) = match self.position {
                     Position::Center => {
-                        let centered_x = (window.inner_size().width / 2) - (w / 2);
-                        let centered_y = (window.inner_size().height / 2) - (h / 2);
+                        let centered_x = (window.inner_size().width / 2) - (width / 2.0) as u32;
+                        let centered_y = (window.inner_size().height / 2) - (height / 2.0) as u32;
 
                         (centered_x as i32, centered_y as i32)
                     }
