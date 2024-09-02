@@ -4,12 +4,16 @@ use std::time::Duration;
 
 use chrono::Timelike;
 use cosmic_text::Attrs;
+use cosmic_text::AttrsOwned;
 use cosmic_text::Buffer;
 use cosmic_text::Color;
+use cosmic_text::Family;
+use cosmic_text::FamilyOwned;
 use cosmic_text::FontSystem;
 use cosmic_text::Metrics;
 use cosmic_text::Shaping;
 use cosmic_text::SwashCache;
+use cosmic_text::Weight;
 use spin::RwLock;
 use tiny_skia::Paint;
 use tiny_skia::Pixmap;
@@ -18,6 +22,7 @@ use tiny_skia::Transform;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
+use crate::config::FontConfig;
 use crate::config::Position;
 use crate::render::Drawable;
 
@@ -25,6 +30,7 @@ pub struct Clock {
     buffer: Buffer,
     font_system: FontSystem,
     swash_cache: SwashCache,
+    font_attrs: AttrsOwned,
 
     current_time: Arc<RwLock<String>>,
 
@@ -35,21 +41,34 @@ impl Clock {
     pub fn new(
         event_loop: &EventLoop<()>,
         position: Position,
-        font_size: f32,
-        line_height: f32,
         show_seconds: bool,
+        font_config: &FontConfig,
     ) -> Result<Self, Box<dyn Error>> {
         // cosmic-text says we should use one per application, but who cares? I don't want to use
         // mutexes so here we go.
         let mut font_system = FontSystem::new();
         let swash_cache = SwashCache::new();
 
+        let attrs = Attrs::new()
+            .family(
+                font_config
+                    .font_family
+                    .as_ref()
+                    .map(|family| Family::Name(family))
+                    .unwrap_or(Family::Monospace),
+            )
+            .weight(Weight(font_config.font_weight));
+        let attrs = AttrsOwned::new(attrs);
+
         // TODO how this line height works???
-        let mut buffer = Buffer::new(&mut font_system, Metrics::new(font_size, line_height));
+        let mut buffer = Buffer::new(
+            &mut font_system,
+            Metrics::new(font_config.font_size, font_config.line_height),
+        );
         buffer.set_text(
             &mut font_system,
             &get_time(show_seconds),
-            Attrs::new().family(cosmic_text::Family::Monospace),
+            attrs.as_attrs(),
             Shaping::Advanced,
         );
 
@@ -71,6 +90,7 @@ impl Clock {
             buffer,
             font_system,
             swash_cache,
+            font_attrs: attrs,
             current_time,
             position,
         })
@@ -82,7 +102,7 @@ impl Drawable for Clock {
         self.buffer.set_text(
             &mut self.font_system,
             &self.current_time.read(),
-            Attrs::new().family(cosmic_text::Family::Monospace),
+            self.font_attrs.as_attrs(),
             Shaping::Advanced,
         );
 

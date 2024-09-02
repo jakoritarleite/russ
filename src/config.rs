@@ -20,9 +20,13 @@ impl Default for Configuration {
             background: Background::Color((0, 0, 0)),
             widgets: vec![Widget::Clock {
                 position: Position::XY { x: 50, y: 100 },
-                font_size: 150.0,
-                line_height: 1.0,
                 show_seconds: false,
+                font: FontConfig {
+                    font_size: 150.0,
+                    line_height: 1.0,
+                    font_family: None,
+                    font_weight: 100,
+                },
             }],
         }
     }
@@ -50,10 +54,18 @@ pub enum Position {
 pub enum Widget {
     Clock {
         position: Position,
-        font_size: f32,
-        line_height: f32,
         show_seconds: bool,
+        #[serde(flatten)]
+        font: FontConfig,
     },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FontConfig {
+    pub line_height: f32,
+    pub font_family: Option<String>,
+    pub font_size: f32,
+    pub font_weight: u16,
 }
 
 #[derive(Debug, Error)]

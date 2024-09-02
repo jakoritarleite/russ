@@ -1,5 +1,4 @@
 use std::borrow::BorrowMut;
-use std::collections::HashMap;
 use std::error::Error;
 
 use winit::application::ApplicationHandler;
@@ -22,7 +21,7 @@ use crate::widget::clock::Clock;
 use crate::window::WindowState;
 
 pub struct Application {
-    windows: HashMap<WindowId, WindowState>,
+    window: Option<WindowState>,
 
     background: Background,
     widgets: Vec<Box<dyn Drawable>>,
@@ -40,18 +39,10 @@ impl Application {
             .map(|widget| match widget {
                 crate::config::Widget::Clock {
                     position,
-                    font_size,
-                    line_height,
                     show_seconds,
+                    font,
                 } => {
-                    let clock = Clock::new(
-                        event_loop,
-                        *position,
-                        *font_size,
-                        *line_height,
-                        *show_seconds,
-                    )
-                    .unwrap();
+                    let clock = Clock::new(event_loop, *position, *show_seconds, font).unwrap();
                     let clock: Box<dyn Drawable> = Box::new(clock);
                     clock
                 }
@@ -59,7 +50,7 @@ impl Application {
             .collect();
 
         Self {
-            windows: Default::default(),
+            window: None,
             background,
             widgets,
         }
@@ -79,7 +70,7 @@ impl Application {
         let window_state = WindowState::new(window)?;
         let window_id = window_state.window.id();
 
-        self.windows.insert(window_id, window_state);
+        self.window = Some(window_state);
 
         Ok(window_id)
     }
@@ -87,21 +78,21 @@ impl Application {
 
 impl ApplicationHandler for Application {
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, _event: ()) {
-        for window_state in self.windows.values() {
-            window_state.window.request_redraw();
+        if let Some(ref state) = self.window {
+            state.window.request_redraw();
         }
     }
 
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
-        window_id: WindowId,
+        _window_id: WindowId,
         event: winit::event::WindowEvent,
     ) {
         event_loop.set_control_flow(ControlFlow::Wait);
 
-        let window = match self.windows.get_mut(&window_id) {
-            Some(window) => window,
+        let window = match self.window {
+            Some(ref mut window) => window,
             None => return,
         };
 
@@ -112,7 +103,7 @@ impl ApplicationHandler for Application {
             }
 
             WindowEvent::CloseRequested => {
-                self.windows.remove(&window_id);
+                self.window = None;
             }
 
             WindowEvent::ModifiersChanged(modifiers) => {
@@ -156,7 +147,7 @@ impl ApplicationHandler for Application {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if self.windows.is_empty() {
+        if self.window.is_none() {
             event_loop.exit();
         }
     }
