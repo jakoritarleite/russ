@@ -8,7 +8,6 @@ use cosmic_text::AttrsOwned;
 use cosmic_text::Buffer;
 use cosmic_text::Color;
 use cosmic_text::Family;
-use cosmic_text::FamilyOwned;
 use cosmic_text::FontSystem;
 use cosmic_text::Metrics;
 use cosmic_text::Shaping;
@@ -121,8 +120,17 @@ impl Drawable for Clock {
 
             Position::XY { .. } => (0.0, 0.0),
         };
-
         let height = height * self.buffer.metrics().line_height;
+
+        let (padding_x, padding_y) = match self.position {
+            Position::Center => {
+                let centered_x = (window.inner_size().width / 2) - (width / 2.0) as u32;
+                let centered_y = (window.inner_size().height / 2) - (height / 2.0) as u32;
+
+                (centered_x as i32, centered_y as i32)
+            }
+            Position::XY { x, y } => (x as i32, y as i32),
+        };
 
         self.buffer.draw(
             &mut self.font_system,
@@ -130,16 +138,6 @@ impl Drawable for Clock {
             // TODO: make this color configurable
             Color::rgb(255, 255, 255),
             |x, y, w, h, color| {
-                let (padding_x, padding_y) = match self.position {
-                    Position::Center => {
-                        let centered_x = (window.inner_size().width / 2) - (width / 2.0) as u32;
-                        let centered_y = (window.inner_size().height / 2) - (height / 2.0) as u32;
-
-                        (centered_x as i32, centered_y as i32)
-                    }
-                    Position::XY { x, y } => (x as i32, y as i32),
-                };
-
                 paint.set_color_rgba8(color.b(), color.g(), color.r(), color.a());
                 buffer.fill_rect(
                     Rect::from_xywh(
