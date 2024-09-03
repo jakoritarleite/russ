@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 use std::error::Error;
 
+use thiserror::Error;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
@@ -15,11 +16,16 @@ use winit::window::WindowAttributes;
 use winit::window::WindowId;
 
 use crate::background::Background;
+use crate::background::BackgroundConversionError;
+use crate::config;
+use crate::config::ConfigError;
 use crate::config::Configuration;
+use crate::render::DrawError;
 use crate::render::Drawable;
 use crate::widget::clock::Clock;
 use crate::widget::date::Date;
 use crate::widget::text::Text;
+use crate::widget::WidgetError;
 use crate::window::WindowState;
 
 pub struct Application {
@@ -30,40 +36,33 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(event_loop: &EventLoop<()>) -> Self {
-        let config = Configuration::new().unwrap();
+    pub fn new(event_loop: &EventLoop<()>) -> Result<Self, ApplicationError> {
+        let config = Configuration::new()?;
 
-        let background = (&config.background).try_into().unwrap();
+        let background = (&config.background).try_into()?;
+
+        fn cast_box<W: Drawable + 'static>(widget: W) -> Box<dyn Drawable> {
+            let widget: Box<dyn Drawable> = Box::new(widget);
+            widget
+        }
 
         let widgets: Vec<Box<dyn Drawable>> = config
             .widgets
             .into_iter()
             .map(|widget| match widget {
-                crate::config::Widget::Clock(config) => {
-                    let clock = Clock::new(event_loop, config).unwrap();
-                    let clock: Box<dyn Drawable> = Box::new(clock);
-                    clock
-                }
+                config::Widget::Clock(config) => Clock::new(event_loop, config).map(cast_box),
 
-                crate::config::Widget::Text(config) => {
-                    let text = Text::new(config).unwrap();
-                    let text: Box<dyn Drawable> = Box::new(text);
-                    text
-                }
+                config::Widget::Text(config) => Text::new(config).map(cast_box),
 
-                crate::config::Widget::Date(config) => {
-                    let date = Date::new(event_loop, config).unwrap();
-                    let date: Box<dyn Drawable> = Box::new(date);
-                    date
-                }
+                config::Widget::Date(config) => Date::new(event_loop, config).map(cast_box),
             })
-            .collect();
+            .collect::<Result<Vec<Box<_>>, WidgetError>>()?;
 
-        Self {
+        Ok(Self {
             window: None,
             background,
             widgets,
-        }
+        })
     }
 
     fn create_window(&mut self, event_loop: &ActiveEventLoop) -> Result<WindowId, Box<dyn Error>> {
@@ -166,4 +165,19 @@ impl ApplicationHandler for Application {
         self.create_window(event_loop)
             .expect("failed to create window");
     }
+}
+
+#[derive(Debug, Error)]
+pub enum ApplicationError {
+    #[error("An error ocurred when parsing the configuration file: {0}")]
+    Config(#[from] ConfigError),
+
+    #[error("An error occurred when converting the background: {0}")]
+    BackgroundConversion(#[from] BackgroundConversionError),
+
+    #[error("An error ocurrend creating the widget: {0}")]
+    Widget(#[from] WidgetError),
+
+    #[error("An error ocurred when drawing: {0}")]
+    Draw(#[from] DrawError),
 }

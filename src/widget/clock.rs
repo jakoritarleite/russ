@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -10,9 +9,11 @@ use winit::window::Window;
 
 use crate::config::ClockConfig;
 use crate::config::TextConfig;
+use crate::render::DrawError;
 use crate::render::Drawable;
 
 use super::text::Text;
+use super::WidgetError;
 
 pub struct Clock {
     text_widget: Text,
@@ -20,7 +21,7 @@ pub struct Clock {
 }
 
 impl Clock {
-    pub fn new(event_loop: &EventLoop<()>, config: ClockConfig) -> Result<Self, Box<dyn Error>> {
+    pub fn new(event_loop: &EventLoop<()>, config: ClockConfig) -> Result<Self, WidgetError> {
         let text_config = TextConfig {
             text: get_time(config.show_seconds),
             position: config.position,
@@ -51,7 +52,7 @@ impl Clock {
 }
 
 impl Drawable for Clock {
-    fn draw(&mut self, window: &Window, buffer: &mut Pixmap) -> Result<(), Box<dyn Error>> {
+    fn draw(&mut self, window: &Window, buffer: &mut Pixmap) -> Result<(), DrawError> {
         self.text_widget
             .update_data(self.current_time.read().to_string());
         self.text_widget.draw(window, buffer)

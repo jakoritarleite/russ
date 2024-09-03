@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
+use thiserror::Error;
 
 pub mod clock;
 pub mod date;
@@ -21,3 +22,7 @@ pub enum Position {
         y: u32,
     },
 }
+
+#[derive(Debug, Error)]
+#[error("widget error")]
+pub struct WidgetError;

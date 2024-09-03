@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -9,9 +8,11 @@ use winit::window::Window;
 
 use crate::config::DateConfig;
 use crate::config::TextConfig;
+use crate::render::DrawError;
 use crate::render::Drawable;
 
 use super::text::Text;
+use super::WidgetError;
 
 pub struct Date {
     text_widget: Text,
@@ -19,7 +20,7 @@ pub struct Date {
 }
 
 impl Date {
-    pub fn new(event_loop: &EventLoop<()>, config: DateConfig) -> Result<Self, Box<dyn Error>> {
+    pub fn new(event_loop: &EventLoop<()>, config: DateConfig) -> Result<Self, WidgetError> {
         let text_config = TextConfig {
             text: get_date(),
             position: config.position,
@@ -49,7 +50,7 @@ impl Date {
 }
 
 impl Drawable for Date {
-    fn draw(&mut self, window: &Window, buffer: &mut Pixmap) -> Result<(), Box<dyn Error>> {
+    fn draw(&mut self, window: &Window, buffer: &mut Pixmap) -> Result<(), DrawError> {
         self.text_widget
             .update_data(self.current_time.read().to_string());
         self.text_widget.draw(window, buffer)

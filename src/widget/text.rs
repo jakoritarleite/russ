@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use cosmic_text::Attrs;
 use cosmic_text::AttrsOwned;
 use cosmic_text::Buffer;
@@ -17,9 +15,11 @@ use tiny_skia::Transform;
 use winit::window::Window;
 
 use crate::config::TextConfig;
+use crate::render::DrawError;
 use crate::render::Drawable;
 
 use super::Position;
+use super::WidgetError;
 
 pub struct Text {
     position: Position,
@@ -33,7 +33,7 @@ pub struct Text {
 }
 
 impl Text {
-    pub fn new(config: TextConfig) -> Result<Self, Box<dyn Error>> {
+    pub fn new(config: TextConfig) -> Result<Self, WidgetError> {
         // cosmic-text says we should use one per application, but who cares? I don't want to use
         // mutexes so here we go.
         let mut font_system = FontSystem::new();
@@ -79,7 +79,7 @@ impl Text {
 }
 
 impl Drawable for Text {
-    fn draw(&mut self, window: &Window, buffer: &mut Pixmap) -> Result<(), Box<dyn Error>> {
+    fn draw(&mut self, window: &Window, buffer: &mut Pixmap) -> Result<(), DrawError> {
         self.buffer.set_text(
             &mut self.font_system,
             &self.data,

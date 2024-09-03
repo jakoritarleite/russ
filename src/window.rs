@@ -10,6 +10,7 @@ use winit::dpi::PhysicalSize;
 use winit::keyboard::ModifiersState;
 use winit::window::Window;
 
+use crate::render::DrawError;
 use crate::render::Drawable;
 
 pub struct WindowState {
@@ -68,7 +69,7 @@ impl WindowState {
         self.window.request_redraw();
     }
 
-    pub fn draw(&mut self, drawables: Vec<&mut dyn Drawable>) -> Result<(), Box<dyn Error>> {
+    pub fn draw(&mut self, drawables: Vec<&mut dyn Drawable>) -> Result<(), DrawError> {
         for drawable in drawables {
             drawable.draw(&self.window, &mut self.drawing_buffer)?;
         }
