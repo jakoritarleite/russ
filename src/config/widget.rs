@@ -32,6 +32,12 @@ pub struct TextConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DateConfig {
     pub position: Position,
+    #[serde(default = "default_date_format")]
+    pub format: String,
     #[serde(flatten)]
     pub font: Font,
+}
+
+fn default_date_format() -> String {
+    "%A - %B %d".to_string()
 }
