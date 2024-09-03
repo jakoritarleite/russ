@@ -8,8 +8,8 @@ use tiny_skia::Pixmap;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
-use crate::config::FontConfig;
-use crate::config::Position;
+use crate::config::ClockConfig;
+use crate::config::TextConfig;
 use crate::render::Drawable;
 
 use super::text::Text;
@@ -20,19 +20,20 @@ pub struct Clock {
 }
 
 impl Clock {
-    pub fn new(
-        event_loop: &EventLoop<()>,
-        position: Position,
-        show_seconds: bool,
-        font_config: &FontConfig,
-    ) -> Result<Self, Box<dyn Error>> {
-        let widget = Text::new(get_time(show_seconds), position, font_config)?;
+    pub fn new(event_loop: &EventLoop<()>, config: ClockConfig) -> Result<Self, Box<dyn Error>> {
+        let text_config = TextConfig {
+            text: get_time(config.show_seconds),
+            position: config.position,
+            font: config.font,
+        };
+        let widget = Text::new(text_config)?;
 
-        let current_time = Arc::new(RwLock::new(get_time(show_seconds)));
+        let current_time = Arc::new(RwLock::new(get_time(config.show_seconds)));
 
         {
             let event_loop_proxy = event_loop.create_proxy();
             let current_time = current_time.clone();
+            let show_seconds = config.show_seconds;
 
             std::thread::spawn(move || loop {
                 std::thread::sleep(Duration::from_secs(1));

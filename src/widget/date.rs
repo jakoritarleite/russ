@@ -2,14 +2,13 @@ use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::Timelike;
 use spin::RwLock;
 use tiny_skia::Pixmap;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
-use crate::config::FontConfig;
-use crate::config::Position;
+use crate::config::DateConfig;
+use crate::config::TextConfig;
 use crate::render::Drawable;
 
 use super::text::Text;
@@ -20,12 +19,13 @@ pub struct Date {
 }
 
 impl Date {
-    pub fn new(
-        event_loop: &EventLoop<()>,
-        position: Position,
-        font_config: &FontConfig,
-    ) -> Result<Self, Box<dyn Error>> {
-        let widget = Text::new(get_date(), position, font_config)?;
+    pub fn new(event_loop: &EventLoop<()>, config: DateConfig) -> Result<Self, Box<dyn Error>> {
+        let text_config = TextConfig {
+            text: get_date(),
+            position: config.position,
+            font: config.font,
+        };
+        let widget = Text::new(text_config)?;
 
         let current_time = Arc::new(RwLock::new(get_date()));
 

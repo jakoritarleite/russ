@@ -1,8 +1,5 @@
 use std::error::Error;
-use std::sync::Arc;
-use std::time::Duration;
 
-use chrono::Timelike;
 use cosmic_text::Attrs;
 use cosmic_text::AttrsOwned;
 use cosmic_text::Buffer;
@@ -19,9 +16,10 @@ use tiny_skia::Rect;
 use tiny_skia::Transform;
 use winit::window::Window;
 
-use crate::config::FontConfig;
-use crate::config::Position;
+use crate::config::TextConfig;
 use crate::render::Drawable;
+
+use super::Position;
 
 pub struct Text {
     position: Position,
@@ -35,11 +33,7 @@ pub struct Text {
 }
 
 impl Text {
-    pub fn new(
-        text: String,
-        position: Position,
-        font_config: &FontConfig,
-    ) -> Result<Self, Box<dyn Error>> {
+    pub fn new(config: TextConfig) -> Result<Self, Box<dyn Error>> {
         // cosmic-text says we should use one per application, but who cares? I don't want to use
         // mutexes so here we go.
         let mut font_system = FontSystem::new();
@@ -47,29 +41,35 @@ impl Text {
 
         let attrs = Attrs::new()
             .family(
-                font_config
+                config
+                    .font
                     .font_family
                     .as_ref()
                     .map(|family| Family::Name(family))
                     .unwrap_or(Family::Monospace),
             )
-            .weight(Weight(font_config.font_weight));
+            .weight(Weight(config.font.font_weight));
         let attrs = AttrsOwned::new(attrs);
 
         // TODO how this line height works???
         let mut buffer = Buffer::new(
             &mut font_system,
-            Metrics::new(font_config.font_size, font_config.line_height),
+            Metrics::new(config.font.font_size, config.font.line_height),
         );
-        buffer.set_text(&mut font_system, &text, attrs.as_attrs(), Shaping::Advanced);
+        buffer.set_text(
+            &mut font_system,
+            &config.text,
+            attrs.as_attrs(),
+            Shaping::Advanced,
+        );
 
         Ok(Self {
             buffer,
             font_system,
             swash_cache,
             font_attrs: attrs,
-            position,
-            data: text,
+            position: config.position,
+            data: config.text.clone(),
         })
     }
 
@@ -88,7 +88,7 @@ impl Drawable for Text {
         );
 
         let mut paint = Paint {
-            anti_alias: false,
+            anti_alias: true,
             ..Default::default()
         };
 
@@ -136,9 +136,9 @@ impl Drawable for Text {
             &mut self.font_system,
             &mut self.swash_cache,
             // TODO: make this color configurable
-            Color::rgb(255, 255, 255),
+            Color::rgba(255, 255, 255, 100),
             |x, y, w, h, color| {
-                paint.set_color_rgba8(color.b(), color.g(), color.r(), color.a());
+                paint.set_color_rgba8(color.r(), color.g(), color.b(), color.a());
                 buffer.fill_rect(
                     Rect::from_xywh(
                         (x + padding_x) as f32,

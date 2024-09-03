@@ -37,30 +37,22 @@ impl Application {
 
         let widgets: Vec<Box<dyn Drawable>> = config
             .widgets
-            .iter()
+            .into_iter()
             .map(|widget| match widget {
-                crate::config::Widget::Clock {
-                    position,
-                    show_seconds,
-                    font,
-                } => {
-                    let clock = Clock::new(event_loop, *position, *show_seconds, font).unwrap();
+                crate::config::Widget::Clock(config) => {
+                    let clock = Clock::new(event_loop, config).unwrap();
                     let clock: Box<dyn Drawable> = Box::new(clock);
                     clock
                 }
 
-                crate::config::Widget::Text {
-                    position,
-                    text,
-                    font,
-                } => {
-                    let text = Text::new(text.clone(), *position, font).unwrap();
+                crate::config::Widget::Text(config) => {
+                    let text = Text::new(config).unwrap();
                     let text: Box<dyn Drawable> = Box::new(text);
                     text
                 }
 
-                crate::config::Widget::Date { position, font } => {
-                    let date = Date::new(event_loop, *position, font).unwrap();
+                crate::config::Widget::Date(config) => {
+                    let date = Date::new(event_loop, config).unwrap();
                     let date: Box<dyn Drawable> = Box::new(date);
                     date
                 }
