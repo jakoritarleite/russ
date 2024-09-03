@@ -18,6 +18,7 @@ use crate::background::Background;
 use crate::config::Configuration;
 use crate::render::Drawable;
 use crate::widget::clock::Clock;
+use crate::widget::date::Date;
 use crate::widget::text::Text;
 use crate::window::WindowState;
 
@@ -56,6 +57,12 @@ impl Application {
                     let text = Text::new(text.clone(), *position, font).unwrap();
                     let text: Box<dyn Drawable> = Box::new(text);
                     text
+                }
+
+                crate::config::Widget::Date { position, font } => {
+                    let date = Date::new(event_loop, *position, font).unwrap();
+                    let date: Box<dyn Drawable> = Box::new(date);
+                    date
                 }
             })
             .collect();

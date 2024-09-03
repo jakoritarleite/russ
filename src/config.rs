@@ -70,6 +70,11 @@ pub enum Widget {
         #[serde(flatten)]
         font: FontConfig,
     },
+    Date {
+        position: Position,
+        #[serde(flatten)]
+        font: FontConfig,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
