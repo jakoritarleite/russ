@@ -18,6 +18,7 @@ use crate::background::Background;
 use crate::config::Configuration;
 use crate::render::Drawable;
 use crate::widget::clock::Clock;
+use crate::widget::text::Text;
 use crate::window::WindowState;
 
 pub struct Application {
@@ -45,6 +46,16 @@ impl Application {
                     let clock = Clock::new(event_loop, *position, *show_seconds, font).unwrap();
                     let clock: Box<dyn Drawable> = Box::new(clock);
                     clock
+                }
+
+                crate::config::Widget::Text {
+                    position,
+                    text,
+                    font,
+                } => {
+                    let text = Text::new(text.clone(), *position, font).unwrap();
+                    let text: Box<dyn Drawable> = Box::new(text);
+                    text
                 }
             })
             .collect();
