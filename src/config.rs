@@ -43,6 +43,12 @@ pub enum Background {
 pub enum Position {
     #[default]
     Center,
+    CenteredX {
+        y: u32,
+    },
+    CenteredY {
+        x: u32,
+    },
     XY {
         x: u32,
         y: u32,

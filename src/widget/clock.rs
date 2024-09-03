@@ -110,26 +110,44 @@ impl Drawable for Clock {
             ..Default::default()
         };
 
-        let (width, height) = match self.position {
-            Position::Center => self
-                .buffer
-                .layout_runs()
-                .fold((0.0, 0.0), |(width, height), run| {
-                    (run.line_w.max(width), height + 1.0)
-                }),
-
-            Position::XY { .. } => (0.0, 0.0),
-        };
-        let height = height * self.buffer.metrics().line_height;
-
         let (padding_x, padding_y) = match self.position {
             Position::Center => {
+                let (width, height) = self
+                    .buffer
+                    .layout_runs()
+                    .fold((0.0, 0.0), |(width, height), run| {
+                        (run.line_w.max(width), height + 1.0)
+                    });
+
+                let height = height * self.buffer.metrics().line_height;
+
                 let centered_x = (window.inner_size().width / 2) - (width / 2.0) as u32;
                 let centered_y = (window.inner_size().height / 2) - (height / 2.0) as u32;
 
                 (centered_x as i32, centered_y as i32)
             }
+
             Position::XY { x, y } => (x as i32, y as i32),
+
+            Position::CenteredX { y } => {
+                let width = self
+                    .buffer
+                    .layout_runs()
+                    .fold(0.0, |width, run| run.line_w.max(width));
+
+                let centered_x = (window.inner_size().width / 2) - (width / 2.0) as u32;
+
+                (centered_x as i32, y as i32)
+            }
+
+            Position::CenteredY { x } => {
+                let height = self.buffer.layout_runs().count();
+                let height = height as f32 * self.buffer.metrics().line_height;
+
+                let centered_y = (window.inner_size().height / 2) - (height / 2.0) as u32;
+
+                (x as i32, centered_y as i32)
+            }
         };
 
         self.buffer.draw(
