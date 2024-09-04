@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::Timelike;
 use spin::RwLock;
 use tiny_skia::Pixmap;
 use winit::event_loop::EventLoop;
@@ -62,8 +61,10 @@ impl Drawable for Clock {
 fn get_time(show_seconds: bool) -> String {
     let dt = chrono::Local::now();
 
-    match show_seconds {
-        true => format!("{:0<2}:{:0<2}:{:0<2}", dt.hour(), dt.minute(), dt.second()),
-        false => format!("{:0<2}:{:0<2}", dt.hour(), dt.minute()),
-    }
+    let format = match show_seconds {
+        true => "%H:%M:%S",
+        false => "%H:%M",
+    };
+
+    format!("{}", dt.format(format))
 }

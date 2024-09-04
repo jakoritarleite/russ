@@ -60,6 +60,5 @@ impl Drawable for Date {
 fn get_date(format: &str) -> String {
     let dt = chrono::Local::now();
 
-    // TODO: make this format configurable
     format!("{}", dt.format(format))
 }
