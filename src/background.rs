@@ -1,9 +1,12 @@
 use std::io;
 
 use fast_image_resize::images::Image;
+use fast_image_resize::CropBox;
 use fast_image_resize::IntoImageView;
 use fast_image_resize::PixelType;
+use fast_image_resize::ResizeOptions;
 use fast_image_resize::Resizer;
+use fast_image_resize::SrcCropping;
 use image::DynamicImage;
 use image::ImageReader;
 use image::Luma;
@@ -43,7 +46,22 @@ impl Background {
 
         let mut resized = Image::new(size.width, size.height, image.pixel_type().unwrap());
         let mut resizer = Resizer::new();
-        resizer.resize(image, &mut resized, None).unwrap();
+        resizer
+            .resize(
+                image,
+                &mut resized,
+                Some(&ResizeOptions {
+                    cropping: SrcCropping::Crop(CropBox::fit_src_into_dst_size(
+                        image.width() as _,
+                        image.height() as _,
+                        size.width as _,
+                        size.height as _,
+                        Some((0.5, 0.5)),
+                    )),
+                    ..Default::default()
+                }),
+            )
+            .unwrap();
 
         // The image contains width * height number of pixels, where each pixel is 32-bit long
         // this way we need a buffer of width * height * 4 (8bit for red, green, blue and alpha)
