@@ -7,7 +7,9 @@ edition = "2021"
 chrono = "0.4.38"
 confy = "0.6.1"
 cosmic-text = "0.12.1"
+fast_image_resize = { version = "4.2.1", features = ["image"] }
 image = "0.25.2"
+num-traits = "0.2.19"
 pixels = "0.13.0"
 serde = { version = "1.0.209", features = ["derive"] }
 spin = "0.9.8"
